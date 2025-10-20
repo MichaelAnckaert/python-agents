@@ -11,7 +11,6 @@ class BaseMemory(ABC):
     def clear(self):
         pass
 
-
     @abstractmethod
     def insert_system_message(self, message: Message):
         pass

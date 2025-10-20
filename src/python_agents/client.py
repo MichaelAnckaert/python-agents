@@ -2,8 +2,7 @@ import json
 
 from openai import AsyncOpenAI
 
-from python_agents import tools, utils
-from python_agents.memory import BaseMemory
+from python_agents import tools
 from python_agents.message import Message
 
 
@@ -12,11 +11,9 @@ class LLMClient:
         self,
         model_name: str = None,
         base_url: str = "https://openrouter.ai/api/v1",
-        memory: BaseMemory = None,
     ):
         self.model_name = model_name
         self.client = AsyncOpenAI(base_url=base_url)
-        self.memory = memory
         self.tools = {}
 
     def add_tool(self, func):
@@ -25,8 +22,6 @@ class LLMClient:
 
     async def _make_llm_call(self, messages: list[Message], model_name: str = None):
         available_tools = [tool["schema"] for tool in self.tools.values()]
-
-        utils.pretty_print(messages)
 
         response = await self.client.chat.completions.create(
             model=model_name or self.model_name,
@@ -48,26 +43,23 @@ class LLMClient:
             raise RuntimeError(f"LLM tried to call unknown tool '{tool_name}'")
         return tc.id, tool_name, tool_result
 
-    async def invoke(self, message: Message | str, model_name=None):
-        if type(message) is str:
-            message = Message(role="user", content=message)
+    async def invoke(self, query: list[Message] | Message | str, model_name=None, verbose: bool = False):
+        if type(query) is str:
+            messages = [Message(role="user", content=query)]
+        elif type(query) is Message:
+            messages = [query]
+        elif type(query) is list:
+            messages = query
+        else:
+            raise ValueError("Parameter query is of wrong type!")
 
-        if self.memory:
-            self.memory.add_message(message)
-
-        messages = self.memory.messages.copy() if self.memory else [message]
         response = await self._make_llm_call(messages, model_name)
-
-        if self.memory:
-            msg = Message(role=response.message.role, content=response.message.content)
-            self.memory.add_message(msg)
 
         if response.message.tool_calls is not None:
             messages.append(response.message.model_dump())
-            if self.memory:
-                self.memory.add_message(Message(response.message.model_dump()))
             for tc in response.message.tool_calls:
                 tool_call_id, tool_name, tool_result = await self._make_tool_call(tc)
+                print(f"🤖 Called tool {tool_name}")
 
                 tool_message = Message(
                     role="tool",
@@ -76,11 +68,10 @@ class LLMClient:
                     name=tool_name,
                 )
                 messages.append(tool_message)
-                if self.memory:
-                    self.memory.add_message(tool_message)
 
             response = await self._make_llm_call(messages, model_name)
-            if self.memory:
-                self.memory.add_message(Message(role="assistant", content=response.message.content))
+        else:
+            if verbose:
+                print(f"🤖 Response: {response.message.content}")
 
         return response
