@@ -70,46 +70,7 @@ Usage
 
    asyncio.run(main())
 
-Available OpenAI models:
-
-* ``gpt-4-turbo``
-* ``gpt-4``
-* ``gpt-3.5-turbo``
-* See `OpenAI models documentation <https://platform.openai.com/docs/models>`_ for more
-
-With Tools
-~~~~~~~~~~
-
-.. code-block:: python
-
-   from python_agents.client import LLMClient
-   from python_agents.agents import ReactAgent
-   import asyncio
-
-   def get_weather(location: str) -> str:
-       """Get the weather for a location.
-
-       Args:
-           location: City name
-
-       Returns:
-           Weather information
-       """
-       # Implementation here
-       return f"Sunny, 72°F in {location}"
-
-   async def main():
-       client = LLMClient(
-           model_name="gpt-4-turbo",
-           base_url="https://api.openai.com/v1"
-       )
-       client.add_tool(get_weather)
-
-       agent = ReactAgent(client)
-       result = await agent.run("What's the weather in Paris?", verbose=True)
-       print(result)
-
-   asyncio.run(main())
+Available OpenAI models: see `OpenAI models documentation <https://platform.openai.com/docs/models>`_ 
 
 Custom Providers
 ----------------
