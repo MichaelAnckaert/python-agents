@@ -23,6 +23,16 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/MichaelAnckaert/python-agents"
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.14.1",
+]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-autodoc-typehints>=2.0.0",
+]
+
 [dependency-groups]
 dev = [
     "ruff>=0.14.1",
