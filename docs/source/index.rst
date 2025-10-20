@@ -19,7 +19,6 @@ Features
 * **Simple Tool Integration**: Convert Python functions to agent tools automatically
 * **Async-First Design**: Built on async/await for efficient concurrent operations
 * **OpenRouter Compatible**: Works with any OpenAI-compatible API endpoint
-* **Type-Safe**: Full type hints throughout the codebase
 
 Indices and tables
 ==================
