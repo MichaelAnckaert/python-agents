@@ -10,6 +10,7 @@ The library provides a minimal but powerful abstraction for creating agents that
    :caption: Contents:
 
    quickstart
+   howto
    api
 
 Features
