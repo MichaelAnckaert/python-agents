@@ -15,7 +15,7 @@ print(response.message.content)
 ## Tool Calling
 `python-agents` supports tool calling:
 
-```code
+```python
 # Define a python function to be used as a tool
 def calculator(operation: str, a: int, b: int):
     """Performation operation on parameters a and b.
