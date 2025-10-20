@@ -6,4 +6,5 @@ This section provides practical guides for common tasks and configurations when 
 .. toctree::
    :maxdepth: 1
 
+   howto/tool_calling
    howto/configure_providers
