@@ -13,3 +13,6 @@ wheels/
 .env
 .env.prod
 .env.example
+
+# Documentation builds
+docs/_build/
