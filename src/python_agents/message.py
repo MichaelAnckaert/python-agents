@@ -1,9 +1,9 @@
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 
 class Message(TypedDict):
     role: str
     content: str
-    tool_call_id: str = None
-    name: str = None
-    tool_calls: list[Any] = None
+    tool_call_id: NotRequired[str]
+    name: NotRequired[str]
+    tool_calls: NotRequired[list[Any]]

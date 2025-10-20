@@ -7,8 +7,10 @@ when the LLM requests them.
 """
 
 import json
+from typing import Any, Callable
 
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageFunctionToolCall
 
 from python_agents import tools
 from python_agents.message import Message
@@ -59,7 +61,7 @@ class LLMClient:
 
     def __init__(
         self,
-        model_name: str = None,
+        model_name: str,
         base_url: str = "https://openrouter.ai/api/v1",
     ):
         """Initialize the LLM client.
@@ -77,9 +79,9 @@ class LLMClient:
         """
         self.model_name = model_name
         self.client = AsyncOpenAI(base_url=base_url)
-        self.tools = {}
+        self.tools: dict[str, dict[str, Any]] = {}
 
-    def add_tool(self, func):
+    def add_tool(self, func: Callable[..., Any]):
         """Register a Python function as a tool that the LLM can call.
 
         The function is automatically converted to an OpenAI function schema using
@@ -114,7 +116,7 @@ class LLMClient:
         schema = tools.create_tool_schema(func)
         self.tools[func.__name__] = {"func": func, "schema": schema}
 
-    async def _make_llm_call(self, messages: list[Message], model_name: str = None):
+    async def _make_llm_call(self, messages: list[Message], model_name: str | None = None):
         """Make a low-level call to the LLM API.
 
         Internal method that handles the actual API request to the LLM, including
@@ -132,13 +134,13 @@ class LLMClient:
 
         response = await self.client.chat.completions.create(
             model=model_name or self.model_name,
-            messages=messages,
+            messages=messages, # type: ignore
             tools=available_tools,
         )
 
         return response.choices[0]
 
-    async def _make_tool_call(self, tc):
+    async def _make_tool_call(self, tc: ChatCompletionMessageFunctionToolCall) -> tuple[str, str, str]:
         """Execute a tool call requested by the LLM.
 
         Internal method that executes a registered tool function with the arguments
@@ -153,9 +155,9 @@ class LLMClient:
         Raises:
             RuntimeError: If the LLM requests a tool that hasn't been registered.
         """
-        tool_name = tc.function.name
-        tool_args = tc.function.arguments
-        tool_args = json.loads(tool_args) if tool_args else {}
+        tool_name: str = tc.function.name
+        tool_arg_str: str = tc.function.arguments
+        tool_args: dict[str, Any] = json.loads(tool_arg_str) if tool_arg_str else {}
 
         if tool_name in self.tools:
             func = self.tools[tool_name]["func"]
@@ -164,7 +166,7 @@ class LLMClient:
             raise RuntimeError(f"LLM tried to call unknown tool '{tool_name}'")
         return tc.id, tool_name, tool_result
 
-    async def invoke(self, query: list[Message] | Message | str, model_name=None, verbose: bool = False):
+    async def invoke(self, query: list[Message] | Message | str, model_name: str | None = None, verbose: bool = False):
         """Send a query to the LLM and handle any tool calls.
 
         This is the main method for interacting with the LLM. It accepts various input
