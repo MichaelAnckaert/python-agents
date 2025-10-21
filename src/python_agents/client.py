@@ -6,17 +6,75 @@ tool calling, where Python functions are converted to tool schemas and executed
 when the LLM requests them.
 """
 
+from abc import ABC, abstractmethod
+from contextlib import AsyncExitStack
 import json
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageFunctionToolCall
+
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 from python_agents import tools
 from python_agents.message import Message
 
 
-class LLMClient:
+class BaseLLMClient(ABC):
+    """Abstract base class for LLM clients."""
+
+    @abstractmethod
+    async def invoke(self, query: list[Message] | Message | str, model_name: str | None = None, verbose: bool = False):
+        pass
+
+
+
+class MCPClient:
+    def __init__(self):
+        # Initialize session and client objects
+        self.session: Optional[ClientSession] = None
+        self.exit_stack = AsyncExitStack()
+        self.tools: dict[str, dict] = {}
+
+    async def cleanup(self):
+        await self.exit_stack.aclose()
+
+    async def connect_to_server(self, command: str, arguments: list[str]):
+        """Connect to an MCP server
+
+        Args:
+            server_script_path: Path to the server script (.py or .js)
+        """
+        server_params = StdioServerParameters(
+            command=command,
+            args=arguments,
+            env=None
+        )
+
+        stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
+        self.stdio, self.write = stdio_transport
+        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
+
+        await self.session.initialize()
+
+        # List available tools
+        response = await self.session.list_tools()
+        tools = response.tools
+        print("\nConnected to server with tools:", [tool.name for tool in tools])
+
+    async def list_available_tools(self):
+        response = await self.session.list_tools()
+        self.tools = [t.name for t in response.tools]
+
+        return [tools.convert_tool_format(t) for t in response.tools]
+
+    async def call_tool(self, tool_name: str, tool_args: dict[str, Any]):
+        response = await self.session.call_tool(tool_name, tool_args)
+        return response.content
+
+
+class LLMClient(BaseLLMClient):
     """Client for interacting with Large Language Models with tool calling support.
 
     LLMClient provides a high-level interface for calling LLMs through the OpenAI API.
@@ -80,6 +138,22 @@ class LLMClient:
         self.model_name = model_name
         self.client = AsyncOpenAI(base_url=base_url)
         self.tools: dict[str, dict[str, Any]] = {}
+        self.mcp_servers = []
+
+    async def cleanup(self):
+        for mcp in self.mcp_servers:
+            await mcp.cleanup()
+
+    def add_mcp_server(self, mcp_client: MCPClient):
+        """Register an MCPClient as a tool provider.
+
+        The tools available from the MCPClient will be made available to the LLM
+        for function calling.
+
+        Args:
+            mcp_client (MCPClient): An instance of MCPClient connected to an MCP server.
+        """
+        self.mcp_servers.append(mcp_client)
 
     def add_tool(self, func: Callable[..., Any]):
         """Register a Python function as a tool that the LLM can call.
@@ -131,6 +205,10 @@ class LLMClient:
                 the message and optionally tool calls.
         """
         available_tools = [tool["schema"] for tool in self.tools.values()]
+        for mcp_client in self.mcp_servers:
+            mcp_tools = await mcp_client.list_available_tools()
+            available_tools.extend(mcp_tools)
+
 
         response = await self.client.chat.completions.create(
             model=model_name or self.model_name,
@@ -163,7 +241,16 @@ class LLMClient:
             func = self.tools[tool_name]["func"]
             tool_result = str(func(**tool_args))
         else:
-            raise RuntimeError(f"LLM tried to call unknown tool '{tool_name}'")
+            # Check MCP servers
+            tool_result = None
+            for mcp_client in self.mcp_servers:
+                if tool_name in mcp_client.tools:
+                    tool_result = await mcp_client.call_tool(tool_name, tool_args)
+                    break
+
+            if tool_result is None:
+                # Tool not found
+                raise RuntimeError(f"Requested tool '{tool_name}' is not registered!")
         return tc.id, tool_name, tool_result
 
     async def invoke(self, query: list[Message] | Message | str, model_name: str | None = None, verbose: bool = False):
