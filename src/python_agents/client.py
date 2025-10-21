@@ -129,7 +129,7 @@ class LLMClient(BaseLLMClient):
         self.mcp_servers: list[MCPClient] = []
 
     async def cleanup(self):
-        """Cleanup resources that were acquired and used by the LLMCLient."""
+        """Cleanup resources that were acquired and used by the LLMClient."""
         for mcp in self.mcp_servers:
             await mcp.cleanup()
 
