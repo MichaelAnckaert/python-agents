@@ -76,7 +76,8 @@ class Message(TypedDict):
           contexts: tool_call_id and name for tool messages, tool_calls for assistant messages
         - This structure is passed to and returned from LLMClient.invoke() and used throughout
           the conversation history in ReactAgent
-"""
+    """
+
     role: str
     content: str
     tool_call_id: NotRequired[str]

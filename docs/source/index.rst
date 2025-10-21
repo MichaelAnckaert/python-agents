@@ -18,6 +18,7 @@ Features
 
 * **REACT Agent Pattern**: Step-by-step reasoning with tool calling
 * **Simple Tool Integration**: Convert Python functions to agent tools automatically
+* **MCP Server Support**: Connect to Model Context Protocol servers for external integrations
 * **Async-First Design**: Built on async/await for efficient concurrent operations
 * **OpenRouter Compatible**: Works with any OpenAI-compatible API endpoint
 

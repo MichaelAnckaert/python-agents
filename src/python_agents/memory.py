@@ -6,6 +6,7 @@ retrieval, and manipulation for maintaining context across agent interactions.
 """
 
 from abc import ABC, abstractmethod
+
 from python_agents.message import Message
 
 

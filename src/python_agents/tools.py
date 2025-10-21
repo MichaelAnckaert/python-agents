@@ -16,11 +16,10 @@ class ParameterSchema(TypedDict):
     default: Any | None
 
 
-
 class ToolFunctionSchema(TypedDict):
     name: str
     description: str
-    parameters:  dict[str, ParameterSchema] | dict[str, Any]
+    parameters: dict[str, ParameterSchema] | dict[str, Any]
 
 
 class ToolSchema(TypedDict):

@@ -9,7 +9,6 @@ number of iterations is reached.
 from python_agents.client import LLMClient
 from python_agents.message import Message
 
-
 REACT_PROMPT_TEMPLATE = """You are an AI assistant that uses a step-by-step reasoning approach to solve problems.
 
 You have access to tools through function calling. When you need information or to perform an action, call the appropriate tool function.

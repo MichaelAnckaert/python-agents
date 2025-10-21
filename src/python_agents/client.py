@@ -6,16 +6,15 @@ tool calling, where Python functions are converted to tool schemas and executed
 when the LLM requests them.
 """
 
+import json
 from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
-import json
 from typing import Any, Callable, Optional
-
-from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageFunctionToolCall
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageFunctionToolCall
 
 from python_agents import tools
 from python_agents.message import Message
@@ -29,7 +28,6 @@ class BaseLLMClient(ABC):
         pass
 
 
-
 class MCPClient:
     def __init__(self):
         # Initialize session and client objects
@@ -41,16 +39,8 @@ class MCPClient:
         await self.exit_stack.aclose()
 
     async def connect_to_server(self, command: str, arguments: list[str]):
-        """Connect to an MCP server
-
-        Args:
-            server_script_path: Path to the server script (.py or .js)
-        """
-        server_params = StdioServerParameters(
-            command=command,
-            args=arguments,
-            env=None
-        )
+        """Connect to an MCP server."""
+        server_params = StdioServerParameters(command=command, args=arguments, env=None)
 
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         self.stdio, self.write = stdio_transport
@@ -59,9 +49,7 @@ class MCPClient:
         await self.session.initialize()
 
         # List available tools
-        response = await self.session.list_tools()
-        tools = response.tools
-        print("\nConnected to server with tools:", [tool.name for tool in tools])
+        _ = await self.session.list_tools()
 
     async def list_available_tools(self):
         response = await self.session.list_tools()
@@ -138,9 +126,10 @@ class LLMClient(BaseLLMClient):
         self.model_name = model_name
         self.client = AsyncOpenAI(base_url=base_url)
         self.tools: dict[str, dict[str, Any]] = {}
-        self.mcp_servers = []
+        self.mcp_servers: list[MCPClient] = []
 
     async def cleanup(self):
+        """Cleanup resources that were acquired and used by the LLMCLient."""
         for mcp in self.mcp_servers:
             await mcp.cleanup()
 
@@ -209,10 +198,9 @@ class LLMClient(BaseLLMClient):
             mcp_tools = await mcp_client.list_available_tools()
             available_tools.extend(mcp_tools)
 
-
         response = await self.client.chat.completions.create(
             model=model_name or self.model_name,
-            messages=messages, # type: ignore
+            messages=messages,  # type: ignore
             tools=available_tools,
         )
 

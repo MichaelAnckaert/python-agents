@@ -7,4 +7,5 @@ This section provides practical guides for common tasks and configurations when 
    :maxdepth: 1
 
    howto/tool_calling
+   howto/using_mcp_servers
    howto/configure_providers
